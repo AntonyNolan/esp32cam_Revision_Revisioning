@@ -39,7 +39,7 @@ const char* password = "gr3yskull";
 // #define ST_GATEWAY 192,168,0,2 
 // #define ST_NETMASK 255,255,255,0
 // one or two optional DNS servers can be supplied, but these are not used by current code.
-// #define ST_DNS1 192,168,0,2
+ #define ST_DNS1 192,168,0,2
 // #define ST_DNS2 8,8,8,8
 
 
@@ -67,6 +67,8 @@ const char* password = "gr3yskull";
 // #define CAMERA_MODEL_M5STACK_WIDE
 // #define CAMERA_MODEL_M5STACK_ESP32CAM   // Originally: CAMERA_MODEL_M5STACK_NO_PSRAM
 // #define CAMERA_MODEL_TTGO_T_JOURNAL
+
+// 
 
 // Initial Reslolution, default SVGA
 // available values are: FRAMESIZE_[QQVGA|HQVGA|QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA|QXGA(ov3660)]
@@ -97,3 +99,4 @@ const char* password = "gr3yskull";
 //         Face recognition enrolements will be lost between reboots.
 #define FACE_DETECTION
 #define FACE_RECOGNITION
+
