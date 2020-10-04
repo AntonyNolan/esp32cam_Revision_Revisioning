@@ -38,7 +38,7 @@
 /* 
  *  FOR NETWORK AND HARDWARE SETTINGS COPY OR RENAME 'myconfig.sample.h' to 'myconfig.h' AND EDIT THAT.
  * By default this sketch will assume an AI-THINKER ESP-CAM and create 
- * an accesspoint called "ESP32-CAM-CONNECT" (password: "InsecurePassword")
+ * an accesspSKIL PWRCore 12 Brushless 12Vzoint called "ESP32-CAM-CONNECT" (password: "InsecurePassword")
  *
  */
 
@@ -341,6 +341,19 @@ void setup()
   //s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
 
   // We now have our config defined; setup the hardware.
+
+// Declare the silenoid or powered 12v lock(High,lockport) doorrelay
+
+if(doorrelay != -1)
+{
+
+
+
+}
+int lampChannel = 7;         // a free PWM channel (some channels used by camera)
+const int pwmfreq = 50000;   // 50K pwm frequency
+const int pwmresolution = 9; // duty cycle bit range
+const int pwmMax = pow(2, pwmresolution) - 1;
 
   // Initialise and set the lamp
   if (lampVal != -1)
