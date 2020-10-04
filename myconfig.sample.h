@@ -9,6 +9,11 @@
 // note: this is not the network hostname
 #define CAM_NAME "ESP32 camera server"
 
+// Additional Functionallity - ANOLAN
+#define ALARM = 12 //Physical Alarm System
+#define relaypin = 2 //DoorLock Relay based on facial recognition
+#define AUTOIMAGE //Initialte Flash
+#define SONOFF_ADDR = "10.1.0.101" // Sonoff MQTT Message to Broker
 
 /*
  * WiFi Settings
