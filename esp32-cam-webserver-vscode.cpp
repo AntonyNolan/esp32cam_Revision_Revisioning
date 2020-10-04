@@ -166,22 +166,31 @@ void flashLED(int flashtime)
   return; // No notifcation LED, do nothing, no delay
 #endif
 }
-#define ALARM_PIN 2 // pin GPIO2 
-#define PIR_PIN 12 // pin GPIO12
-unsigned long currentMillis = 0;
-unsigned long openedMillis = 0;
-long interval = 5000;           // open lock for ... milliseconds
+#define ALARM_PIN 11 // pin GPI11
+#define IR_PIN 10 // pin GPIO10
+
+#ifdef SONOFF_ADDR
+  char* SONOFF_ADDR = "http://192.168.1.103";
+  long switch_time_out = 5000;
+#else
+  return;
+#endif
 
 
 
-
-// Alarm Relay LED
-void ALARMRELAY(int alarmOn)
+// Alarm 
+void ALARM
 {
-#ifdef ALARM_PIN                     // Initiate Lock PowerOn Test
-  digitalWrite(ALARM_PIN, ALARM_ON); // On at full power.
-  delay(RELAYtime);                  // delay
-  digitalWrite(LED_PIN, LED_OFF);    // turn Off
+#ifdef ALARM_PIN          
+  for (size_t i = 5; i < count; i++)
+  {
+    // Initiate Lock Audio Alarm System
+      digitalWrite(ALARM_PIN, HIGH); // On at full power.
+      delay(100);   
+      digitalWrite(ALARM_PIN, LOW); // Off
+
+  }
+      digitalWrite(LED_PIN, LED_OFF);    // turn Off
 #else
   return; // No alarm LED, do nothing, no delay
 #endif
@@ -205,6 +214,8 @@ void setLamp(int newVal)
 
 void setup()
 {
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
@@ -249,6 +260,15 @@ void setup()
     config.jpeg_quality = 12;
     config.fb_count = 1;
   }
+
+// Automated Camera Snap and Storage Config
+
+RTC_DATA_ATTR int bootCount = 0;
+int pictureNumber = 0;
+
+  pinMode(4, INPUT);
+  digitalWrite(4, LOW);
+  rtc_gpio_hold_dis(GPIO_NUM_4);
 
 #if defined(CAMERA_MODEL_ESP_EYE)
   pinMode(13, INPUT_PULLUP);
@@ -343,13 +363,17 @@ void setup()
   // We now have our config defined; setup the hardware.
 
 // Declare the silenoid or powered 12v lock(High,lockport) doorrelay
-
-if(doorrelay != -1)
+if(relayPin != -1)
 {
-
-
-
-}
+  // rzoCheckForFace EDITED
+  #define relayPin 12 // pin 12 can also be used
+  Serial.print(s]"Lock Pin On:");
+  Serial.print(s](relayPin);
+  unsigned long currentMillis = 0;
+  unsigned long openedMillis = 0;
+  long interval = 5000;           // open lock for 5 Seconds
+};
+''
 int lampChannel = 7;         // a free PWM channel (some channels used by camera)
 const int pwmfreq = 50000;   // 50K pwm frequency
 const int pwmresolution = 9; // duty cycle bit range
@@ -481,8 +505,49 @@ const int pwmMax = pow(2, pwmresolution) - 1;
       openedMillis = millis();      //time relay closed
     }
     if (currentMillis - interval > openedMillis)
-    {                              // current time - face recognised time > 5 secs
+    { 
+      // current time - face recognised time > 5 secs
+      Serial.printf("Lock Pin Open Initiated:");
+      Serial.printf(relayPin);
       digitalWrite(relayPin, LOW); //open relay
+    }
+    if ((!run_face_recognition()) && digitalRead(relayPin) = "LOW" )
+    {
+      Serial.Print("Alarm Triggered")
+      ALARM();
+    }
+    if ((!run_face_recognition() && (Wifi.LocalIP())) // Local Wifi Enabled and facial decection status True
+    {      
+      // Send MQTT Command to Sonoff 
+      static esp_err_t update_sonoff_status()
+      {
+        char* full_sonoff_address = (char*)malloc(40);
+        Serial.printf("Remote Lock Pin Issued From:");
+        Serial.printf(SONNOFF_ADDR());
+
+        //Toggle Lock Open
+        sprintf(full_sonoff_address, "%s/cm?cmnd=Power%%20TOGGLE", sonoff_ip);
+        delay(50000)
+        //Toggle Lock Closed
+        sprintf(full_sonoff_address, "%s/cm?cmnd=Power%%20TOGGLE", sonoff_ip);
+
+        esp_http_client_config_t config = {
+          .url = full_sonoff_address,
+        };
+
+        esp_http_client_handle_t client = esp_http_client_init(&config);
+        esp_err_t err = esp_http_client_perform(client);
+
+        if (err == ESP_OK) {
+          ESP_LOGI(TAG, "Status = %d, content_length = %d",
+                  esp_http_client_get_status_code(client),
+                  esp_http_client_get_content_length(client));
+        }
+        esp_http_client_cleanup(client);
+}
+
+
+
     }
 
     bool run_face_recognition()
@@ -511,6 +576,7 @@ const int pwmMax = pow(2, pwmresolution) - 1;
 
       box_array_t *net_boxes = face_detect(image_matrix, &mtmn_config);
 
+
       if (net_boxes)
       {
         if (align_face(net_boxes, image_matrix, aligned_face) == ESP_OK)
@@ -519,8 +585,11 @@ const int pwmMax = pow(2, pwmresolution) - 1;
           int matched_id = recognize_face(&id_list, aligned_face);
           if (matched_id >= 0)
           {
+
             Serial.printf("Match Face ID: %u\n", matched_id);
             faceRecognised = true; // function will now return true
+            update_sonoff_status();
+
           }
           else
           {
@@ -539,11 +608,79 @@ const int pwmMax = pow(2, pwmresolution) - 1;
       }
 
       dl_matrix3du_free(image_matrix);
+
       return faceRecognised;
     }
   }
-  // ################## VOID LOOP ###################
 
+
+
+#if defined(AUTOIMAGE)
+{
+  //Initialize SD Card
+  Serial.println("Starting SD Card");
+ 
+  delay(500);
+  if(!SD_MMC.begin()){
+    Serial.println("SD Card Mount Failed");
+    //return;
+  }
+ 
+  uint8_t cardType = SD_MMC.cardType();
+  if(cardType == CARD_NONE){
+    Serial.println("No SD Card attached");
+    return;
+  }
+   
+  camera_fb_t * fb = NULL;
+ 
+  // Take Picture with Camera
+  fb = esp_camera_fb_get();  
+  if(!fb) {
+    Serial.println("Camera capture failed");
+    return;
+  }
+  // initialize EEPROM with predefined size
+  EEPROM.begin(EEPROM_SIZE);
+  pictureNumber = EEPROM.read(0) + 1;
+ 
+  // Path where new picture will be saved in SD Card
+  String path = "/picture" + String(pictureNumber) +".jpg";
+ 
+  fs::FS &fs = SD_MMC;
+  Serial.printf("Picture file name: %s\n", path.c_str());
+ 
+  File file = fs.open(path.c_str(), FILE_WRITE);
+  if(!file){
+    Serial.println("Failed to open file in writing mode");
+  }
+  else {
+    file.write(fb->buf, fb->len); // payload (image), payload length
+    Serial.printf("Saved file to path: %s\n", path.c_str());
+    EEPROM.write(0, pictureNumber);
+    EEPROM.commit();
+  }
+  file.close();
+  esp_camera_fb_return(fb);
+  
+  delay(1000);
+  
+  // Turns off the ESP32-CAM white on-board LED (flash) connected to GPIO 4
+  pinMode(4, OUTPUT);
+  digitalWrite(4, LOW);
+  rtc_gpio_hold_en(GPIO_NUM_4);
+
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_13, 0);
+ 
+  Serial.println("Going to sleep now");
+  delay(1000);
+  esp_deep_sleep_start();
+  Serial.println("This will never be printed");
+} 
+#endif
+
+
+}
   void loop()
   {
     // Just loop forever
